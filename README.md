@@ -1,224 +1,226 @@
-# 🚀 Express Template (Node.js + Sequelize + Zod)
+# crypta-client
 
-A clean, modern, and scalable **Express.js project template** built for real-world backend development.  
-This template follows a **modular structure**, supports **Sequelize ORM**, **Zod validation**, and includes helpers for clean response handling and validation.
+[![npm version](https://img.shields.io/npm/v/crypta-client.svg)](https://www.npmjs.com/package/crypta-client)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
----
+A Node.js client library for interacting with the Crypta Secret Manager. Securely manage and access secrets using service account authentication with JWT.
 
-## 🧱 Features
+## Features
 
-✅ Modular architecture (controllers, routes, middlewares, utils)  
-✅ Sequelize ORM (with CLI migrations & models under `/db/`)  
-✅ Zod for schema-based validation  
-✅ Centralized API response formatter  
-✅ Error-handling middleware  
-✅ Environment variable configuration with `dotenv`  
-✅ Ready for REST API projects or as backend for fullstack apps  
+- 🔐 **Secure Authentication** - Service account-based authentication using JWT
+- 🔄 **Automatic Token Management** - Built-in token caching and refresh
+- 🚀 **Simple API** - Easy-to-use interface for secret retrieval
+- ⚡ **Lightweight** - Minimal dependencies
+- 🛡️ **Error Handling** - Comprehensive error handling and custom error types
 
----
-
-## 📂 Folder Structure
-
-```
-
-express-template/
-├── src/
-│   ├── routes/                # Route definitions
-│   │   └── index.js
-│   ├── controllers/           # Controller logic
-│   │   └── example.controller.js
-│   ├── middlewares/           # Global middlewares
-│   ├── utils/                 # Helper functions (api, validation, etc.)
-│   │   ├── api.js
-│   │   └── validation.js
-│   └── config/
-│       └── config.js          # dotenv loader and config manager
-│
-├── db/
-│   ├── models/                # Sequelize models
-│   ├── migrations/            # Migration files
-│   ├── seeders/               # Seeder files
-│   └── config/config.json     # Sequelize DB config
-│
-├── .env.example               # Sample environment variables
-├── .sequelizerc               # Sequelize CLI paths configuration
-├── .gitignore
-├── package.json
-└── README.md
-
-````
-
----
-
-## ⚙️ Installation
-
-Clone the repository:
+## Installation
 
 ```bash
-git clone https://github.com/rayhanzz772/express-template.git
-cd express-template
-````
-
-Install dependencies:
-
-```bash
-npm install
+npm install crypta-client
 ```
 
----
+## Quick Start
 
-## 🧾 Environment Setup
+```javascript
+const { CryptaClient } = require('crypta-client')
 
-Create a `.env` file based on `.env.example`:
-
-```
-PORT=5000
-NODE_ENV=development
-
-DB_DIALECT=postgres
-DB_HOST=localhost
-DB_USER=postgres
-DB_PASS=123456
-DB_NAME=express_template
-```
-
----
-
-## 🧩 Database Setup (Sequelize)
-
-Initialize Sequelize project (if needed):
-
-```bash
-npx sequelize-cli init
-```
-
-Run migrations:
-
-```bash
-npx sequelize-cli db:migrate
-```
-
-Undo migration (optional):
-
-```bash
-npx sequelize-cli db:migrate:undo
-```
-
----
-
-## 🧠 Validation Example (Zod)
-
-Each request schema is defined using **Zod** for strict validation.
-
-Example:
-`src/modules/user/schema.js`
-
-```js
-const { z } = require('zod')
-
-const listSchema = z.object({
-  per_page: z.string().regex(/^\d+$/).transform(Number).optional(),
-  page: z.string().regex(/^\d+$/).transform(Number).optional(),
-  q: z.string().trim().optional().nullable()
+// Initialize the client
+const client = new CryptaClient({
+  baseUrl: 'https://your-crypta-instance.com',
+  clientId: 'your-service-account-client-id',
+  privateKeyPem: `-----BEGIN PRIVATE KEY-----
+                  your-private-key-here
+                  -----END PRIVATE KEY-------`
 })
 
-module.exports = { listSchema }
-```
-
-And used in controller:
-
-```js
-const { listSchema } = require('./schema')
-const { validateRequest } = require('../../utils/validation')
-
-const query = validateRequest(listSchema, req, 'query')
-```
-
----
-
-## 🧱 API Example
-
-### Controller
-
-```js
-static async getUser(req, res) {
+// Get a secret
+async function getMySecret() {
   try {
-    const query = validateRequest(listSchema, req, 'query')
-    const users = await db.User.findAll()
-    return res.status(200).json(api.results(users, 200))
-  } catch (err) {
-    console.error(err)
-    return res.status(500).json(api(null, 500, { err }))
+    const secret = await client.getSecret('my-secret-name')
+    console.log('Secret value:', secret.payload)
+  } catch (error) {
+    console.error('Error:', error.message)
+  }
+}
+
+getMySecret()
+```
+
+## API Reference
+
+### `new CryptaClient(options)`
+
+Creates a new Crypta client instance.
+
+#### Parameters
+
+- `options` (Object)
+  - `baseUrl` (string, required) - The base URL of your Crypta instance
+  - `clientId` (string, required) - Your service account client ID
+  - `privateKeyPem` (string, required) - Your service account private key in PEM format
+
+#### Example
+
+```javascript
+const client = new CryptaClient({
+  baseUrl: 'https://crypta.example.com',
+  clientId: 'sa-12345',
+  privateKeyPem: process.env.CRYPTA_PRIVATE_KEY
+})
+```
+
+### `client.getSecret(name)`
+
+Retrieves the latest version of a secret.
+
+#### Parameters
+
+- `name` (string, required) - The name/path of the secret to retrieve
+
+#### Returns
+
+Returns a Promise that resolves to an object containing:
+
+- `payload` (string) - The secret value
+- Additional metadata about the secret
+
+#### Example
+
+```javascript
+const secret = await client.getSecret('database/password')
+console.log(secret.payload) // The actual secret value
+```
+
+#### Error Handling
+
+```javascript
+try {
+  const secret = await client.getSecret('my-secret')
+  console.log(secret.payload)
+} catch (error) {
+  if (error.statusCode === 404) {
+    console.error('Secret not found')
+  } else if (error.statusCode === 401) {
+    console.error('Authentication failed')
+  } else {
+    console.error('Error:', error.message)
   }
 }
 ```
 
-### Route
+## Environment Variables
 
-```js
-const router = require('express').Router()
-const UserController = require('../controllers/user.controller')
+It's recommended to store sensitive information in environment variables:
 
-router.get('/users', UserController.getUser)
+```javascript
+require('dotenv').config() // If using dotenv
 
-module.exports = router
+const client = new CryptaClient({
+  baseUrl: process.env.CRYPTA_BASE_URL,
+  clientId: process.env.CRYPTA_CLIENT_ID,
+  privateKeyPem: process.env.CRYPTA_PRIVATE_KEY
+})
 ```
 
----
+Example `.env` file:
 
-## 🧰 Scripts
+```env
+CRYPTA_BASE_URL=https://crypta.example.com
+CRYPTA_CLIENT_ID=sa-12345
+CRYPTA_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----"
+```
 
-| Command                             | Description                         |
-| ----------------------------------- | ----------------------------------- |
-| `npm run dev`                       | Run development server with Nodemon |
-| `npm start`                         | Run production server               |
-| `npx sequelize-cli db:migrate`      | Run all migrations                  |
-| `npx sequelize-cli db:seed:all`     | Run all seeders                     |
-| `npx sequelize-cli db:migrate:undo` | Rollback last migration             |
+## Advanced Usage
 
----
+### Token Management
 
-## 🔒 API Response Format
+The client automatically manages authentication tokens, including caching and refresh. You don't need to handle tokens manually.
 
-Unified JSON format via `api.results()` and `api()` helpers:
+### Custom Error Handling
 
-```json
-{
-  "success": true,
-  "message": "OK",
-  "metadata": {},
-  "data": { ... }
+The library provides custom error types for better error handling:
+
+```javascript
+const { CryptaClient } = require('crypta-client')
+
+try {
+  const secret = await client.getSecret('my-secret')
+} catch (error) {
+  console.error('Status Code:', error.statusCode)
+  console.error('Message:', error.message)
 }
 ```
 
-Error example:
+### Multiple Secrets
 
-```json
-{
-  "success": false,
-  "message": "Validation failed",
-  "metadata": {},
-  "data": null
+```javascript
+async function getMultipleSecrets() {
+  const secretNames = ['db-password', 'api-key', 'encryption-key']
+
+  try {
+    const secrets = await Promise.all(
+      secretNames.map((name) => client.getSecret(name))
+    )
+
+    return secrets.reduce((acc, secret, index) => {
+      acc[secretNames[index]] = secret.payload
+      return acc
+    }, {})
+  } catch (error) {
+    console.error('Failed to fetch secrets:', error.message)
+    throw error
+  }
 }
 ```
 
+## Requirements
+
+- Node.js >= 14.x
+- A Crypta Secret Manager instance
+- A service account with appropriate permissions
+
+## Dependencies
+
+- `axios` - HTTP client
+- `jsonwebtoken` - JWT token generation
+
+## Error Codes
+
+| Status Code | Description                                 |
+| ----------- | ------------------------------------------- |
+| 401         | Authentication failed - Invalid credentials |
+| 403         | Forbidden - Insufficient permissions        |
+| 404         | Secret not found                            |
+| 500         | Internal server error                       |
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For issues and questions:
+
+- Open an issue on [GitHub](https://github.com/rayhanzz772/crypta-client/issues)
+- Contact: [Your contact information]
+
+## Changelog
+
+### v0.1.0
+
+- Initial release
+- Service account authentication
+- Secret retrieval functionality
+- Automatic token management
+
+## Author
+
+Rayhan
+
 ---
 
-## 🧑‍💻 Author
-
-**Rayhan Z**
-Backend Developer | Node.js & Express Enthusiast
-🔗 [GitHub](https://github.com/rayhanzz772)
-
----
-
-## 🪄 License
-
-This project is licensed under the **MIT License**.
-Feel free to use and modify for your own backend projects.
-
----
-
-> 💡 *Tip:* Fork this repo as your boilerplate backend for all new projects — just replace `/modules` content with your own logic, and you’re ready to build production-grade APIs!
-
----
+**Note**: Make sure to keep your private keys secure and never commit them to version control.
