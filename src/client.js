@@ -5,7 +5,9 @@ const { CryptaError } = require('./errors')
 class CryptaClient {
   constructor({ baseUrl, clientId, privateKeyPem }) {
     if (!baseUrl || !clientId || !privateKeyPem) {
-      throw new Error('baseUrl, clientId, dan privateKeyPem wajib diisi')
+      throw new Error(
+        'Missing required parameters: baseUrl, clientId, privateKeyPem'
+      )
     }
 
     this.baseUrl = baseUrl.replace(/\/+$/, '')
@@ -18,18 +20,18 @@ class CryptaClient {
       http: this.http,
       clientId: this.clientId,
       privateKeyPem: this.privateKeyPem,
-      audience: `${this.baseUrl}/public-api/auth/token`
+      audience: `${this.baseUrl}/client/auth/token`
     })
   }
 
   async getSecret(name) {
-    if (!name) throw new Error('secret name wajib diisi')
+    if (!name) throw new Error('Secret name is required')
 
     const token = await this.tokenManager.getToken()
 
     try {
       const res = await this.http.get(
-        `/v1/secrets/${name}/versions/latest:access`,
+        `/client/latest-secret/v1/secrets/${name}/versions/latest:access`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }

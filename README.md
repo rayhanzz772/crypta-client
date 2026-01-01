@@ -3,15 +3,21 @@
 [![npm version](https://img.shields.io/npm/v/crypta-client.svg)](https://www.npmjs.com/package/crypta-client)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A Node.js client library for interacting with the Crypta Secret Manager. Securely manage and access secrets using service account authentication with JWT.
+`crypta-client` is a Node.js client for securely accessing secrets from **Crypta Secret Manager** using **service account authentication (JWT RS256)**.
+
+This client is designed for **server-to-server** usage and follows a **zero-trust, short-lived token** security model.
+
+---
 
 ## Features
 
-- 🔐 **Secure Authentication** - Service account-based authentication using JWT
-- 🔄 **Automatic Token Management** - Built-in token caching and refresh
-- 🚀 **Simple API** - Easy-to-use interface for secret retrieval
-- ⚡ **Lightweight** - Minimal dependencies
-- 🛡️ **Error Handling** - Comprehensive error handling and custom error types
+- Secure service account authentication (JWT RS256)
+- Automatic access token generation and refresh
+- Simple API for accessing secrets
+- Lightweight and dependency-minimal
+- Clear error handling with HTTP status codes
+
+---
 
 ## Installation
 
@@ -19,208 +25,229 @@ A Node.js client library for interacting with the Crypta Secret Manager. Securel
 npm install crypta-client
 ```
 
-## Quick Start
+---
 
-```javascript
+## Requirements
+
+- Node.js >= 14
+- A Crypta instance
+- A Service Account with:
+
+  - `client_id`
+  - RSA private key (PEM)
+
+- IAM Binding with role: `secret.accessor`
+
+---
+
+## Service Account Credentials
+
+When you create a service account in Crypta, you will receive:
+
+- `client_id`
+- `private_key` (**shown only once**)
+
+Example `client_id`:
+
+```
+service-account-genme@genme.crypta
+```
+
+---
+
+## Private Key Storage
+
+### Option 1: Store as `.pem` file (recommended)
+
+Create a file:
+
+```text
+private_key.pem
+```
+
+```pem
+-----BEGIN PRIVATE KEY-----
+MIIC...
+-----END PRIVATE KEY-----
+```
+
+Add to `.gitignore`:
+
+```gitignore
+private_key.pem
+```
+
+---
+
+### Option 2: Store in environment variables
+
+```env
+CRYPTA_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIC...\n-----END PRIVATE KEY-----"
+```
+
+Normalize newlines in code:
+
+```js
+const privateKey = process.env.CRYPTA_PRIVATE_KEY.replace(/\\n/g, '\n')
+```
+
+---
+
+## Minimal Quick Start
+
+```js
+const fs = require('fs')
 const { CryptaClient } = require('crypta-client')
 
-// Initialize the client
+// Load private key from file
+const privateKey = fs
+  .readFileSync('./private_key.pem', 'utf8')
+  .replace(/\\n/g, '\n')
+
 const client = new CryptaClient({
-  baseUrl: 'https://your-crypta-instance.com',
-  clientId: 'your-service-account-client-id',
-  privateKeyPem: `-----BEGIN PRIVATE KEY-----
-                  your-private-key-here
-                  -----END PRIVATE KEY-------`
+  clientId: 'YOUR_CLIENT_ID',
+  privateKeyPem: privateKey,
+  baseUrl: 'https://api.rayhanprojects.site'
 })
 
-// Get a secret
-async function getMySecret() {
+async function main() {
   try {
-    const secret = await client.getSecret('my-secret-name')
-    console.log('Secret value:', secret.payload)
-  } catch (error) {
-    console.error('Error:', error.message)
+    const secret = await client.getSecret('YOUR_SECRET_NAME')
+    console.log('Secret value:', secret)
+  } catch (err) {
+    console.error(err.message)
   }
 }
 
-getMySecret()
+main()
 ```
+
+### Output
+
+```text
+Secret value: super-secret-db-password
+```
+
+---
 
 ## API Reference
 
 ### `new CryptaClient(options)`
 
-Creates a new Crypta client instance.
+Create a new Crypta client.
 
-#### Parameters
+#### Options
 
-- `options` (Object)
-  - `baseUrl` (string, required) - The base URL of your Crypta instance
-  - `clientId` (string, required) - Your service account client ID
-  - `privateKeyPem` (string, required) - Your service account private key in PEM format
-
-#### Example
-
-```javascript
-const client = new CryptaClient({
-  baseUrl: 'https://crypta.example.com',
-  clientId: 'sa-12345',
-  privateKeyPem: process.env.CRYPTA_PRIVATE_KEY
-})
-```
-
-### `client.getSecret(name)`
-
-Retrieves the latest version of a secret.
-
-#### Parameters
-
-- `name` (string, required) - The name/path of the secret to retrieve
-
-#### Returns
-
-Returns a Promise that resolves to an object containing:
-
-- `payload` (string) - The secret value
-- Additional metadata about the secret
+| Field           | Type   | Required | Description                  |
+| --------------- | ------ | -------- | ---------------------------- |
+| `baseUrl`       | string | yes      | Crypta API base URL          |
+| `clientId`      | string | yes      | Service account client ID    |
+| `privateKeyPem` | string | yes      | RSA private key (PEM format) |
 
 #### Example
 
-```javascript
-const secret = await client.getSecret('database/password')
-console.log(secret.payload) // The actual secret value
-```
-
-#### Error Handling
-
-```javascript
-try {
-  const secret = await client.getSecret('my-secret')
-  console.log(secret.payload)
-} catch (error) {
-  if (error.statusCode === 404) {
-    console.error('Secret not found')
-  } else if (error.statusCode === 401) {
-    console.error('Authentication failed')
-  } else {
-    console.error('Error:', error.message)
-  }
-}
-```
-
-## Environment Variables
-
-It's recommended to store sensitive information in environment variables:
-
-```javascript
-require('dotenv').config() // If using dotenv
-
+```js
 const client = new CryptaClient({
-  baseUrl: process.env.CRYPTA_BASE_URL,
-  clientId: process.env.CRYPTA_CLIENT_ID,
-  privateKeyPem: process.env.CRYPTA_PRIVATE_KEY
+  baseUrl: 'https://api.example.com',
+  clientId: 'service-account@project.crypta',
+  privateKeyPem: privateKey
 })
 ```
 
-Example `.env` file:
-
-```env
-CRYPTA_BASE_URL=https://crypta.example.com
-CRYPTA_CLIENT_ID=sa-12345
-CRYPTA_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----"
-```
-
-## Advanced Usage
-
-### Token Management
-
-The client automatically manages authentication tokens, including caching and refresh. You don't need to handle tokens manually.
-
-### Custom Error Handling
-
-The library provides custom error types for better error handling:
-
-```javascript
-const { CryptaClient } = require('crypta-client')
-
-try {
-  const secret = await client.getSecret('my-secret')
-} catch (error) {
-  console.error('Status Code:', error.statusCode)
-  console.error('Message:', error.message)
-}
-```
-
-### Multiple Secrets
-
-```javascript
-async function getMultipleSecrets() {
-  const secretNames = ['db-password', 'api-key', 'encryption-key']
-
-  try {
-    const secrets = await Promise.all(
-      secretNames.map((name) => client.getSecret(name))
-    )
-
-    return secrets.reduce((acc, secret, index) => {
-      acc[secretNames[index]] = secret.payload
-      return acc
-    }, {})
-  } catch (error) {
-    console.error('Failed to fetch secrets:', error.message)
-    throw error
-  }
-}
-```
-
-## Requirements
-
-- Node.js >= 14.x
-- A Crypta Secret Manager instance
-- A service account with appropriate permissions
-
-## Dependencies
-
-- `axios` - HTTP client
-- `jsonwebtoken` - JWT token generation
-
-## Error Codes
-
-| Status Code | Description                                 |
-| ----------- | ------------------------------------------- |
-| 401         | Authentication failed - Invalid credentials |
-| 403         | Forbidden - Insufficient permissions        |
-| 404         | Secret not found                            |
-| 500         | Internal server error                       |
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-For issues and questions:
-
-- Open an issue on [GitHub](https://github.com/rayhanzz772/crypta-client/issues)
-- Contact: [Your contact information]
-
-## Changelog
-
-### v0.1.0
-
-- Initial release
-- Service account authentication
-- Secret retrieval functionality
-- Automatic token management
-
-## Author
-
-Rayhan
+> ⚠️ You **do not** need to configure audience manually.
+> The client automatically derives it from `baseUrl`.
 
 ---
 
-**Note**: Make sure to keep your private keys secure and never commit them to version control.
+### `client.getSecret(name)`
+
+Fetches the **latest enabled version** of a secret.
+
+#### Parameters
+
+- `name` (`string`, required)
+  The secret name exactly as stored in Crypta.
+
+#### Returns
+
+- `string` — the decrypted secret value
+
+#### Example
+
+```js
+const password = await client.getSecret('db-password')
+```
+
+---
+
+## Error Handling
+
+The client throws a `CryptaError` with an HTTP-like status code.
+
+```js
+try {
+  await client.getSecret('missing-secret')
+} catch (err) {
+  console.error(err.statusCode) // 404
+  console.error(err.message) // "Secret not found"
+}
+```
+
+### Common Status Codes
+
+| Code | Description           |
+| ---: | --------------------- |
+|  401 | Authentication failed |
+|  403 | Permission denied     |
+|  404 | Secret not found      |
+|  500 | Internal server error |
+
+---
+
+## How Authentication Works
+
+1. Client generates a short-lived JWT assertion (RS256)
+2. Crypta verifies the signature using the stored public key
+3. Crypta issues a short-lived access token (HS256)
+4. Client uses the token to access secrets
+5. Secrets are decrypted server-side and returned once
+
+---
+
+## Security Notes
+
+- Private keys never leave the client
+- Crypta stores only public keys
+- Access tokens are short-lived
+- Secrets are not cached
+- Envelope encryption is used internally
+
+---
+
+## License
+
+MIT License
+
+---
+
+## Author
+
+ryz772
+
+---
+
+## Changelog
+
+### v0.1.4
+
+- Initial release
+- Service account authentication
+- Secret access API
+- Automatic token handling
+
+---
+
+## Final Note
+
+⚠️ **Never commit private keys to version control.**
+Rotate keys immediately if they are exposed.

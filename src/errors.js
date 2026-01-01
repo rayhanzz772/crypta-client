@@ -1,8 +1,9 @@
 class CryptaError extends Error {
-  constructor(message, status) {
+  constructor(message, statusCode) {
     super(message)
     this.name = 'CryptaError'
-    this.status = status
+    this.statusCode = statusCode
+    this.status = statusCode // Keep both for backwards compatibility
   }
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "crypta-client",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "Crypta Secret Manager client library for Javascript Application",
   "main": "index.js",
   "type": "commonjs",

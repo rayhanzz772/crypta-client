@@ -22,10 +22,9 @@ class TokenManager {
       audience: this.audience
     })
 
-    const res = await this.http.post('/public-api/auth/token', { assertion })
+    const res = await this.http.post('/client/auth/token', { assertion })
 
     this.accessToken = res.data.access_token
-    // 1 menit buffer
     this.expiresAt = Date.now() + 9 * 60 * 1000
   }
 
