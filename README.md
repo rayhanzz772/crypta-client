@@ -66,13 +66,13 @@ const privateKey = fs.readFileSync('./private_key.pem', 'utf8')
 
 // Initialize the client
 const client = new CryptaClient({
-  baseUrl: 'https://api.rayhanprojects.site',
+  baseUrl: 'https://api.rayhancreative.web.id',
   clientId: 'your-service-account@project.crypta',
   privateKeyPem: privateKey
 })
 
 // Fetch your secrets! 🎉
-const dbPassword = await client.getSecret('database/password')
+const dbPassword = await client.getSecret('DB_PASSWORD')
 console.log('Connected with:', dbPassword)
 ```
 
